@@ -3,28 +3,25 @@
 from __future__ import annotations
 
 import logging
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
-LOGGER_NAME = "trading_bot"
-
-
-def setup_logger() -> logging.Logger:
-    """Create a file logger that writes to bot.log in the project root."""
-
-    logger = logging.getLogger(LOGGER_NAME)
-    if logger.handlers:
-        return logger
-
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
+def setup_logging() -> None:
+    """Configure logging for both console and bot.log."""
 
     log_path = Path(__file__).resolve().parent.parent / "bot.log"
-    handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_path, encoding="utf-8"),
+        ],
+        force=True,
     )
 
-    logger.addHandler(handler)
-    return logger
+
+def setup_logger() -> None:
+    """Backward-compatible alias for older callers."""
+
+    setup_logging()

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 
-from binance.exceptions import BinanceAPIException, BinanceOrderException, BinanceRequestException
-
 from bot.client import get_client
-from bot.logging_config import setup_logger
-from bot.orders import build_order_summary, place_order
+from bot.logging_config import setup_logging
+from bot.orders import place_order
 from bot.validators import validate_order_request
 
 
@@ -35,18 +34,9 @@ def print_order_summary(order_request: dict) -> None:
     print("================================")
 
 
-def print_order_response(order_summary: dict) -> None:
-    print("================================")
-    print("ORDER RESPONSE")
-    print(f"Order ID     : {order_summary.get('orderId', 'N/A')}")
-    print(f"Status       : {order_summary.get('status', 'N/A')}")
-    print(f"Executed Qty : {order_summary.get('executedQty', 'N/A')}")
-    print(f"Avg Price    : {order_summary.get('avgPrice', 'N/A')}")
-    print("================================")
-
-
 def main() -> int:
-    logger = setup_logger()
+    setup_logging()
+    logger = logging.getLogger(__name__)
     parser = build_parser()
     args = parser.parse_args()
 
@@ -59,6 +49,13 @@ def main() -> int:
             price=args.price,
         )
         print_order_summary(order_request)
+        logger.info(
+            "Order request: symbol=%s, side=%s, type=%s, quantity=%s",
+            order_request["symbol"],
+            order_request["side"],
+            order_request["type"],
+            order_request["quantity"],
+        )
 
         client = get_client()
         response = place_order(
@@ -68,10 +65,19 @@ def main() -> int:
             order_type=order_request["type"],
             quantity=order_request["quantity"],
             price=order_request["price"],
-            logger=logger,
         )
-        print("ORDER PLACED SUCCESSFULLY")
-        print_order_response(build_order_summary(response))
+        if isinstance(response, dict) and "error" in response:
+            print("❌ Order Failed:", response["error"])
+            logger.error("Order failed: %s", response["error"])
+            return 1
+
+        logger.info("Order response: %s", response)
+        print("================================")
+        print("✅ ORDER PLACED SUCCESSFULLY")
+        print(f"Order ID     : {response.get('orderId')}")
+        print(f"Status       : {response.get('status')}")
+        print(f"Executed Qty : {response.get('executedQty', 'N/A')}")
+        print("================================")
         return 0
     except ValueError as exc:
         logger.warning("Invalid input: %s", exc)
@@ -80,10 +86,6 @@ def main() -> int:
     except RuntimeError as exc:
         logger.error("Configuration error: %s", exc)
         print(f"Configuration error: {exc}", file=sys.stderr)
-        return 1
-    except (BinanceAPIException, BinanceOrderException, BinanceRequestException, OSError) as exc:
-        logger.exception("Order placement failed")
-        print(f"Order placement failed: {exc}", file=sys.stderr)
         return 1
 
 
