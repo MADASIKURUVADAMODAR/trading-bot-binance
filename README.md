@@ -63,3 +63,5 @@ trading_bot/
 - The bot reads credentials from BINANCE_API_KEY and BINANCE_API_SECRET, with API_KEY and API_SECRET supported as fallbacks.
 
 ## Author
+MADASI KURUVA DAMODAR
+
